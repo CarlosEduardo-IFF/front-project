@@ -1,77 +1,82 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { ShoppingBagIcon } from '@heroicons/react/24/solid';
+import rewardItems from "../hooks/rewardItem";
+import useClientData from '../hooks/useClientData';
+import useRedemptionRecord from '../hooks/useRedemptionRecord';
 
 const LojaDeResgate = () => {
-  // Estado do usuário com pontos
-  const [user, setUser] = useState({
-    name: 'João Silva',
-    credits: 1250,
-    level: 'Ouro'
-  });
+  const { client: user, loading, error } = useClientData();
+  const [credits, setCredits] = useState(0);
+  const [products, setProducts] = useState([]);
+  const [loadingItems, setLoadingItems] = useState(true);
+  const [fetchError, setFetchError] = useState(null);
+  const { create } = useRedemptionRecord();
 
-  // Catálogo de produtos com pontos ganhos ao resgatar
-  const [products, setProducts] = useState([
-    {
-      id: 1,
-      name: 'Horas acadêmicas complementares',
-      description: '5 horas',
-      price: 500,
-      image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60'
-    },
-    {
-      id: 2,
-      name: 'Cupom',
-      description: 'Cupom para lojas parceiras',
-      price: 1500,
-      image: 'https://images.unsplash.com/photo-1542621334-a254cf47733d?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60'
+  const { items } = rewardItems();
+
+  useEffect(() => {
+    if (user) {
+      setCredits(user.credits);
     }
-  ]);
+  }, [user]);
 
-  // Função para resgatar produto
-  const handleRedeem = (productId) => {
+  useEffect(() => {
+    const fetchItems = async () => {
+      try {
+        const data = await items();
+        setProducts(data);
+      } catch (err) {
+        setFetchError("Erro ao carregar produtos");
+      } finally {
+        setLoadingItems(false);
+      }
+    };
+
+    fetchItems();
+  }, []);
+
+  const handleRedeem = async (productId) => {
     const product = products.find(p => p.id === productId);
-    if (user.credits >= product.price) {
-      setUser({
-        ...user,
-        credits: user.credits - product.price,
-      });
-      alert(`Parabéns! Você resgatou ${product.name}!`);
+    if (!product) return;
+  
+    if (credits >= product.costInPoints) {
+      try {
+        await create({
+          email: user.email,
+          rewardItemId: product.id
+        });
+  
+        alert(`Parabéns! Você resgatou ${product.name}!`);
+        setCredits(prev => prev - product.costInPoints);
+      } catch (err) {
+        alert("Erro ao realizar o resgate. Tente novamente.");
+      }
     } else {
       alert('Créditos insuficientes para este produto');
     }
   };
 
+  if (loading || loadingItems) return <div className="font-mono text-center pt-20">Carregando...</div>;
+  if (error || fetchError) return <div className="font-mono text-center pt-20 text-red-500">{fetchError || "Erro ao carregar dados do usuário"}</div>;
+
   return (
-    <div className="min-h-screen mt-20 bg-gradient-to-b from-gray-50 to-gray-100">
-      {/* Header */}
-      <header className="bg-white shadow-sm">
+    <div className="min-h-screen pt-20 bg-gradient-to-b from-[#faefe7] to-white">
+      <header className="bg-[#faefe7] shadow-sm">
         <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center">
-            <h1 className="text-3xl font-bold text-gray-900">Loja de Resgate</h1>
+            
             <div className="flex items-center space-x-4">
-              {/*
-              <div className="flex items-center bg-blue-50 px-4 py-2 rounded-full">
-                <span className="text-blue-800 font-medium mr-2">Pontos:</span>
-                <span className="text-blue-600 font-bold">{user.points}</span>
+              <div className="flex items-center bg-white px-4 py-2 rounded-full">
+                <span className="text-[#509145] font-mono font-medium mr-2">Créditos:</span>
+                <span className="text-[#aac049] font-mono font-bold">{credits}</span>
               </div>
-                */}
-
-              <div className="flex items-center bg-green-50 px-4 py-2 rounded-full">
-                <span className="text-green-800 font-medium mr-2">Créditos:</span>
-                <span className="text-green-600 font-bold">{user.credits}</span>
-              </div>
-              <div className="flex items-center bg-yellow-50 px-4 py-2 rounded-full">
-                <span className="text-yellow-800 font-medium mr-2">Nível:</span>
-                <span className="text-yellow-600 font-bold">{user.level}</span>
-              </div>
+              
             </div>
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8 z-10">
-        {/* Todos os Produtos */}
         <div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {products.map(product => (
@@ -85,14 +90,10 @@ const LojaDeResgate = () => {
           </div>
         </div>
       </main>
-
-      
     </div>
-
   );
 };
 
-// Componente de Card de Produto atualizado
 const ProductCard = ({ product, userCredits, onRedeem }) => {
   const [isHovered, setIsHovered] = useState(false);
 
@@ -104,32 +105,28 @@ const ProductCard = ({ product, userCredits, onRedeem }) => {
     >
       <div className="relative">
         <img 
-          className="h-48 w-full object-cover z-10" 
-          src={product.image} 
+          className="h-48 w-full object-contain z-10 bg-gray-50" 
+          src={`/rewardItem${product.id}.png`} 
           alt={product.name}
         />
-        {/*
-        <div className="absolute top-2 left-2 bg-blue-500 text-white text-xs font-bold px-2 py-1 rounded-2xl">
-          +{product.points} pontos
-        </div>
-        */}
-        <div className="absolute top-2 right-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-2xl">
-          -{product.price} créditos
+        <div className="font-mono absolute top-2 right-2 bg-[#ce6b48] text-white text-xs font-bold px-2 py-1 rounded-2xl">
+          -{product.costInPoints} créditos
         </div>
       </div>
       <div className="p-6">
-        
-        <h3 className="text-xl font-semibold text-gray-900 mb-2">{product.name}</h3>
-        <p className="text-gray-600 mb-4">{product.description}</p>
+        <h3 className="font-mono text-xl font-semibold text-gray-900 mb-2">{product.name}</h3>
+        <p className="font-mono text-gray-600 mb-4">{product.description}</p>
         <button
           onClick={() => onRedeem(product.id)}
-          disabled={userCredits < product.price}
-          className={`w-full py-2 px-4 rounded-lg font-medium flex items-center justify-center ${userCredits >= product.price 
-            ? 'bg-green-600 text-white hover:bg-green-700' 
-            : 'bg-gray-200 text-gray-500 cursor-not-allowed'}`}
+          disabled={userCredits < product.costInPoints}
+          className={`w-full py-2 px-4 rounded-lg font-medium flex items-center justify-center ${
+            userCredits >= product.costInPoints 
+              ? 'font-mono bg-[#aac049] text-white hover:bg-[#509145]' 
+              : 'font-mono bg-gray-200 text-gray-500 cursor-not-allowed'
+          }`}
         >
           <ShoppingBagIcon className="h-5 w-5 mr-2" />
-          {userCredits >= product.price ? 'Resgatar Agora' : 'Créditos Insuficientes'}
+          {userCredits >= product.costInPoints ? 'Resgatar Agora' : 'Créditos Insuficientes'}
         </button>
       </div>
     </div>

@@ -1,24 +1,37 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 
-// Configuração CORRETA dos ícones (solução definitiva)
-const customIcon = new L.Icon({
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
-  iconRetinaUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+// Fix para ícones faltando no Leaflet
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41]
 });
 
-const MapComponent = ({ locations = [] }) => {
+const MapComponent = ({ locations = [], latitude = null, longitude = null }) => {
   const [activeLocation, setActiveLocation] = useState(null);
+  const mapRef = useRef();
+  const [isMounted, setIsMounted] = useState(false);
 
-  // Função para calcular o centro do mapa
+  useEffect(() => {
+    setIsMounted(true);
+    return () => setIsMounted(false);
+  }, []);
+
+  useEffect(() => {
+    if (isMounted && mapRef.current) {
+      setTimeout(() => {
+        mapRef.current.invalidateSize();
+      }, 0);
+    }
+  }, [isMounted, latitude, longitude]);
+
   const getMapCenter = () => {
-    if (locations.length === 0) return [-21.759905208416814, -41.31165564981896]; // Centro de campos
+    if (latitude && longitude) return [latitude, longitude];
+    if (locations.length === 0) return [-15.788497, -47.879873];
     
     const validLocs = locations.filter(loc => 
       !isNaN(loc.latitude) && 
@@ -28,20 +41,23 @@ const MapComponent = ({ locations = [] }) => {
     );
 
     if (validLocs.length === 0) return [-15.788497, -47.879873];
-
-    const avgLat = validLocs.reduce((sum, loc) => sum + loc.latitude, 0) / validLocs.length;
-    const avgLng = validLocs.reduce((sum, loc) => sum + loc.longitude, 0) / validLocs.length;
     
-    return [avgLat, avgLng];
+    return [validLocs[0].latitude, validLocs[0].longitude];
   };
 
   return (
-    <div style={{ height: '500px', width: '100%', position: 'relative' }}>
+    <div className="relative w-full h-full" style={{ zIndex: 10 }}>
       <MapContainer 
         center={getMapCenter()} 
         zoom={13}
-        style={{ height: '100%', width: '100%', borderRadius: '10px' }}
-        scrollWheelZoom={true}
+        className="h-full w-full"
+        scrollWheelZoom={false}
+        ref={mapRef}
+        whenCreated={(map) => {
+          mapRef.current = map;
+          setTimeout(() => map.invalidateSize(), 0);
+        }}
+        style={{ borderRadius: '12px', overflow: 'hidden' }}
       >
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -52,7 +68,6 @@ const MapComponent = ({ locations = [] }) => {
           <Marker
             key={`marker-${index}`}
             position={[location.latitude, location.longitude]}
-            icon={customIcon}
             eventHandlers={{
               click: () => setActiveLocation(location),
             }}
@@ -64,11 +79,11 @@ const MapComponent = ({ locations = [] }) => {
             position={[activeLocation.latitude, activeLocation.longitude]}
             onClose={() => setActiveLocation(null)}
           >
-            <div style={{ padding: '10px', minWidth: '200px' }}>
-              <h3 style={{ margin: 0, fontWeight: 'bold' }}>{activeLocation.name}</h3>
-              <div style={{ marginTop: '5px', fontSize: '14px' }}>
-                <div>Latitude: {activeLocation.latitude.toFixed(6)}</div>
-                <div>Longitude: {activeLocation.longitude.toFixed(6)}</div>
+            <div className="p-2 min-w-[150px]">
+              <h3 className="m-0 font-bold text-sm">{activeLocation.street}</h3>
+              <div className="mt-1 text-xs">
+                <div>Lat: {activeLocation.latitude.toFixed(4)}</div>
+                <div>Lng: {activeLocation.longitude.toFixed(4)}</div>
               </div>
             </div>
           </Popup>

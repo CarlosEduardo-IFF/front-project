@@ -99,19 +99,27 @@ const UserMap = ({ latitude, longitude, locations = [] }) => {
           </Marker>
         )}
 
-        {locations.filter(loc => isValidCoord(loc.latitude, loc.longitude)).map((location, index) => (
+        {locations.filter(loc => isValidCoord(loc.address?.latitude, loc.address?.longitude)).map((location, index) => (
           <Marker
-            key={`marker-${index}`}
-            position={[location.latitude, location.longitude]}
+            key={`marker-${location.id || index}`}
+            position={[location.address.latitude, location.address.longitude]}
             icon={locationIcon}
           >
             <Popup>
               <div style={{ padding: '10px', minWidth: '200px' }}>
                 <h3 style={{ margin: 0, fontWeight: 'bold' }}>{location.name}</h3>
                 <div style={{ marginTop: '5px', fontSize: '14px' }}>
-                  <div>Latitude: {location.latitude.toFixed(6)}</div>
-                  <div>Longitude: {location.longitude.toFixed(6)}</div>
+                  <div>Endereço: {location.address.street}</div>
+                  <div>Cidade: {location.address.city}, {location.address.state}</div>
+                  <div>CEP: {location.address.zipCode}</div>
+                  <div>Latitude: {location.address.latitude.toFixed(6)}</div>
+                  <div>Longitude: {location.address.longitude.toFixed(6)}</div>
                 </div>
+                {location.description && (
+                  <div style={{ marginTop: '5px', fontStyle: 'italic' }}>
+                    {location.description}
+                  </div>
+                )}
               </div>
             </Popup>
           </Marker>
