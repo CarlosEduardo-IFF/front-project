@@ -3,6 +3,7 @@ import CarouselUm from "../components/CarouselUm";
 import MapComponent from "../components/UserMap";
 import adesivoReci from "../assets/adesivoreciclagem.svg"
 import ModalLocalizacao  from "../components/ModalLocalizacao"
+import mascote  from "../assets/mascote2.svg"
 
 import { motion } from "framer-motion"; 
 import { FaRecycle, FaTrash, FaMapMarkerAlt, FaLeaf, FaMobileAlt, FaMapPin } from 'react-icons/fa';
@@ -145,9 +146,9 @@ const HomeUser = () => {
             transition={{ duration: 1 }}
           >
             <img 
-              src="/src/assets/mascote2.svg" 
-              alt="Descrição da imagem mobile"
-              className="w-32 h-auto mx-auto" // w-32 = 8rem (128px) - ajuste conforme necessário
+              src={mascote} 
+              alt="Descrição da imagem mobile" 
+              className="w-32 h-auto mx-auto"
             />
           </motion.div>
         </div>
